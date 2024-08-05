@@ -25,14 +25,11 @@ def init(file_path):
     return res
 
 async def save_to_file(path, data):
-    # print('start save file', path)
     path = os.path.join('data_dir', path)
     async with aiofiles.open(path, 'wb') as file:
         await file.write(data)
-    # print('end save file', path)
 
 async def load_url(url, session):
-    # print('start get url', url)
     try:
         async with session.get(f'https://{url}') as response:
             if response.status != 200:
@@ -44,7 +41,6 @@ async def load_url(url, session):
     except Exception as e:
         pass
         # print(e)
-    # print('end get url', url)
 
 
 async def load_url_wait_for(url, session):
@@ -59,9 +55,8 @@ async def get_all_wait_for(url_list, session):
         coros.append(coro)
 
     res = await asyncio.gather(*coros, return_exceptions=True)
-    print('pending', len(list(filter(lambda i: i[1], zip(coros, res)))))
-    # for res in filter(lambda i: i[1], zip(coros, res)):
-    #     print(f'Loading {res[0].get_name()} end with: {res[0]._exception!r}')
+    for res in filter(lambda i: i[1], zip(coros, res)):
+        print(f'{res[0].get_name()} end with: {res[0]._exception!r}')
 
 
 async def get_all_wait(url_list, session):
@@ -70,12 +65,26 @@ async def get_all_wait(url_list, session):
         url = url.strip()
         tasks.append(asyncio.create_task(load_url(url, session), name=url))
     done, pending = await asyncio.wait(tasks, timeout=TIMEOUT)
-    print('done', len(done))
-    print('pending', len(pending))
+    pending = ','.join([task.get_name() for task in pending if not task.done()])
+    print(f'TimeoutError: {pending}')
+
+async def get_all_as_completed(url_list, session):
+    tasks = []
+    for url in url_list:
+        url = url.strip()
+        tasks.append(asyncio.create_task(load_url(url, session), name=url))
+    try:
+        for r, task in zip(asyncio.as_completed(
+                    tasks,
+                    timeout=TIMEOUT), tasks):
+            await r
+    except asyncio.TimeoutError:
+        pending = ','.join([task.get_name() for task in tasks if not task.done()])
+        print(f'TimeoutError: {pending}')
 
 async def main(urls):
     async with aiohttp.ClientSession() as session:
-        await get_all_wait(urls * 5, session)
+        await get_all_wait(urls, session)
 
 
 
