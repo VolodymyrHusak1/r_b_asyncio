@@ -27,12 +27,15 @@ class MeteoServerProtocol(asyncio.Protocol):
             if not self.generate_data_task.cancelled():
                 self.generate_data_task.cancel()
             data = generate_data()
-            self.transport.write(data.encode())
+            peername = self.transport.get_extra_info('peername')
+            self.transport.write(f'{peername}:{data}'.encode())
 
     async def connection_task(self, transport):
         transport.write(b"Connect\n")
         while True:
             message = await self.queue.get()
+            peername = self.transport.get_extra_info('peername')
+            print(peername, message)
             self._switcher(message)
             await asyncio.sleep(1)
             self.queue.task_done()
@@ -42,7 +45,8 @@ class MeteoServerProtocol(asyncio.Protocol):
         while True:
             await asyncio.sleep(1)
             data = generate_data()
-            transport.write(data.encode())
+            peername = self.transport.get_extra_info('peername')
+            transport.write(f'{peername}:{data}'.encode())
 
     def data_received(self, data):
         message = data.decode()

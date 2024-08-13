@@ -21,6 +21,9 @@ async def client_task(reader, writer):
             await asyncio.sleep(1)
     except Exception as e:
         print(e)
+
+    writer.close()
+    await writer.wait_closed()
     return
 
 
@@ -34,8 +37,7 @@ async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) ->
 
     task = asyncio.ensure_future(client_task(reader, writer))
     task.add_done_callback(client_cleanup)
-    writer.close()
-    await writer.wait_closed()
+
 
 
 async def server_run() -> None:
