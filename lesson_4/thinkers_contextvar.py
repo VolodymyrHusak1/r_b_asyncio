@@ -1,5 +1,4 @@
 import asyncio
-from asyncio import Condition, TaskGroup
 from contextvars import ContextVar
 
 
@@ -17,6 +16,8 @@ async def eat(id):
 
 async def thinker(id):
     while True:
+        print(id, 'Thinking..')
+
         await asyncio.sleep(1)
         left = THINKERS_COUNT if id - 1 < 1 else id - 1
         right = 1 if id + 1 > THINKERS_COUNT else id + 1
