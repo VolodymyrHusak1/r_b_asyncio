@@ -6,6 +6,19 @@ from itertools import batched
 from .models import CVERecord
 from .schemas import CVERecord as CVERecordSchema
 from .tools import _get_batch_file
+from .deps import get_settings
+from .db import Base, get_engine
+
+
+async def create_tables():
+    engine = get_engine(get_settings())
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+async def drop_tables():
+    engine = get_engine(get_settings())
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 async def _get_all_cve(db: AsyncSession,
@@ -50,12 +63,12 @@ async def _inster_data(session, cve_records):
     ids = await _insert_batch(session, CVERecord, cve_records)
     await session.commit()
 
-async def load_cve(db: AsyncSession):
+async def _load_cve(db: AsyncSession):
     tasks = []
+    await drop_tables()
+    await create_tables()
     async for cve_records in _get_batch_file():
         tasks.append(asyncio.create_task(_inster_data(db, cve_records)))
-
-
     done, pending = await asyncio.wait(tasks)
     print(done)
     print(pending)

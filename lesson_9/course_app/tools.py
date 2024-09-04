@@ -1,9 +1,11 @@
-import json
 import os
+import json
+import time
+import subprocess
 from glob import iglob
 from itertools import batched
 from datetime import datetime
-from .config import Settings
+from .deps import get_settings
 
 import aiofiles
 
@@ -17,7 +19,8 @@ def _update_record_data_uuid(ids, record):
 
 
 async def _get_batch_file():
-    cve_path = os.path.join(Settings.cve_path, '**/CVE-*.json')  # 'cvelistV5/cves/**/CVE-*.json'
+    settings = get_settings()
+    cve_path = os.path.join(settings.cve_path, '**/CVE-*.json')  # 'cvelistV5/cves/**/CVE-*.json'
     for batch in batched(iglob(cve_path, recursive=True), n=BATCH_SIZE):
         yield await _get_raw_data(batch)
 
@@ -50,3 +53,17 @@ def _dict_record_data(record):
                   'date_updated': date_updated,
                   'descriptions': descriptions, }
     return cve_record
+
+def load_cve_repo():
+    if not os.path.exists('cvelistV5'):
+        subprocess.run(["git", "clone", "https://github.com/CVEProject/cvelistV5.git", "--depth", "1"])
+
+def pull_cve():
+    print('pull_cve')
+    subprocess.run(["git", "pull", "https://github.com/CVEProject/cvelistV5.git"])
+
+def cve_pull_scheduler():
+    print('cve_pull_scheduler')
+    while True:
+        pull_cve()
+        time.sleep(60)
