@@ -3,6 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert, update
 from sqlalchemy.sql.operators import or_
 from itertools import batched
+
+from sqlalchemy.util import await_only
+
 from .models import CVERecord
 from .schemas import CVERecord as CVERecordSchema
 from .tools import _get_batch_file
@@ -74,10 +77,15 @@ async def _load_cve(db: AsyncSession):
     print(pending)
     await db.commit()
 
-async def _update_data(session, cve_records):
+async def _update_datas(db: AsyncSession, cve_records):
     print('_update_data')
     for cve_record in cve_records:
-        await session.execute(
-            update(CVERecord).where(CVERecord.cve_id == cve_record['cve_id']),
-            cve_record
-        )
+        await _update_data(db, cve_record)
+
+async def _update_data(db: AsyncSession, cve_record):
+    result =  await db.execute(
+        update(CVERecord).returning(CVERecord).where(CVERecord.cve_id == cve_record['cve_id']),
+        cve_record
+    )
+    await db.commit()
+    return result

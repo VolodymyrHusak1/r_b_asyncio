@@ -1,10 +1,14 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..deps import get_db_session
-from ..crud import _get_all_cve, _search_cve_id, _create_cve, _load_cve
 from ..schemas import CVERecord
 from ..cron import cve_pull_scheduler
+from ..crud import (_get_all_cve,
+                    _search_cve_id,
+                    _create_cve,
+                    _load_cve,
+                    _update_data)
 
 cve_api = APIRouter(prefix="/cve")
 
@@ -35,6 +39,18 @@ async def create_cve(cve_record: CVERecord, db: Annotated[AsyncSession, Depends(
     await db.refresh(record)
     return CVERecord.model_validate(record)
 
+
+@cve_api.get("/{cve_id}")
+async def read_cve(cve_id: str, db: Annotated[AsyncSession, Depends(get_db_session)]) -> CVERecord:
+    result = await _search_cve_id(db, cve_id)
+    return CVERecord.model_validate(result.fetchone()[0])
+
+@cve_api.patch("/")
+async def read_cve(cve_record: CVERecord, db: Annotated[AsyncSession, Depends(get_db_session)]):
+    record = await _update_data(db, cve_record.model_dump())
+    if record:
+        return {'message': 'ok'}
+    raise HTTPException(status_code=404, detail="Item not found")
 
 @cve_api.get("/reload_db")
 async def reload_db(db: Annotated[AsyncSession, Depends(get_db_session)]):

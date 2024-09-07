@@ -1,7 +1,7 @@
 import asyncio
 import time
 from .tools import pull_cve, _load_cve_delta, _get_cve_from_link, _dict_record_data
-from .crud import _inster_data, _update_data
+from .crud import _inster_data, _update_datas
 
 
 async def _parse_delta_cve(cves):
@@ -21,5 +21,5 @@ async def cve_pull_scheduler(db):
         cve_records_new = await _parse_delta_cve(cve_new)
         cve_records_updated = await _parse_delta_cve(cve_updated)
         tasks.append(asyncio.create_task(_inster_data(db, cve_records_new)))
-        tasks.append(asyncio.create_task(_update_data(db, cve_records_updated)))
-        time.sleep(60)
+        tasks.append(asyncio.create_task(_update_datas(db, cve_records_updated)))
+        time.sleep(60*60*60*12)
