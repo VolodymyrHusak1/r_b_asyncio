@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..deps import get_db_session
 from ..crud import _get_all_cve, _search_cve_id, _create_cve, _load_cve
 from ..schemas import CVERecord
-from ..tools import cve_pull_scheduler
+from ..cron import cve_pull_scheduler
 
 cve_api = APIRouter(prefix="/cve")
 
@@ -36,17 +36,14 @@ async def create_cve(cve_record: CVERecord, db: Annotated[AsyncSession, Depends(
     return CVERecord.model_validate(record)
 
 
-# @cve_api.get("/{cve_id}")
-# async def read_cve(cve_id: str, db: Annotated[AsyncSession, Depends(get_db_session)]) -> CVERecord:
-#     result = await _search_cve_id(db, cve_id)
-#     return CVERecord.model_validate(result.fetchone()[0])
-
 @cve_api.get("/reload_db")
 async def reload_db(db: Annotated[AsyncSession, Depends(get_db_session)]):
     await _load_cve(db)
     return {'message': 'ok'}
 
 @cve_api.get("/cve_scheduler")
-async def cve_scheduler(background_tasks: BackgroundTasks):
-    background_tasks.add_task(cve_pull_scheduler)
+async def cve_scheduler(db: Annotated[AsyncSession, Depends(get_db_session)],
+                        background_tasks: BackgroundTasks):
+    background_tasks.add_task(cve_pull_scheduler, db)
+
     return {'message': 'ok'}

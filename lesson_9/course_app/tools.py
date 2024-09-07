@@ -5,6 +5,9 @@ import subprocess
 from glob import iglob
 from itertools import batched
 from datetime import datetime
+
+import aiohttp
+
 from .deps import get_settings
 
 import aiofiles
@@ -60,10 +63,26 @@ def load_cve_repo():
 
 def pull_cve():
     print('pull_cve')
-    subprocess.run(["git", "pull", "https://github.com/CVEProject/cvelistV5.git"])
+    subprocess.run(['pwd'])
+    subprocess.call(["cd", "cvelistV5", "&&","git", "pull"], shell=True)
 
-def cve_pull_scheduler():
-    print('cve_pull_scheduler')
-    while True:
-        pull_cve()
-        time.sleep(60)
+
+async def _get_cve_from_link(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status != 200:
+                raise Exception('Got non-200 response!')
+            text_data = await response.text()
+            return json.loads(text_data)
+
+async def _load_cve_delta():
+    settings = get_settings()
+    cve_delta_path = os.path.join(settings.cve_path, 'delta.json')
+    async with aiofiles.open(cve_delta_path) as file:
+        data = await file.read()
+        record = json.loads(data)
+        cve_updated = record.get('updated', [])
+        cve_new = record.get('new', [])
+    return cve_updated, cve_new
+
+

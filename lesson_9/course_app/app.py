@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi_utilities import repeat_at
 from course_app.routers.router import api
-from .tools import load_cve_repo, cve_pull_scheduler
+from .tools import load_cve_repo
 
 
 @asynccontextmanager
@@ -17,9 +18,6 @@ async def lifespan(_app: FastAPI):
     load_cve_repo()
 
     yield
-
-    # async with engine.begin() as conn:
-    #     await conn.run_sync(Base.metadata.drop_all)
 
 
 
